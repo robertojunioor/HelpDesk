@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HelpDesk</title>
+
+  <!-- Google Font: Source Sans Pro -->
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="../plugins/fontawesome-free/css/all.min.css">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="../plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
+  <link rel="stylesheet" href="../plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
+  <link rel="stylesheet" href="../plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
+  <!-- Theme style -->
+  <link rel="stylesheet" href="../dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="../plugins/select2/css/select2.min.css">
+  <link rel="stylesheet" href="../plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
+  <link rel="stylesheet" href="../dist/css/style.css">
+</head>
+
+<script>
+  function carregarPagina(){
+    carregarMenu('movUsuario.html', 'CADASTRO');
+    //Instancia a table
+    createOrDestroyTable(document.getElementById('tblUsuarios'), 'c');
+    carregarEmpresa(document.getElementById('cmbEmpresa'), 0);
+    
+    document.getElementById('nameUser').innerHTML = localStorage.getItem('nome_usuario');
+
+    //Inicializando os select
+    $('.select2').select2({
+      theme: 'bootstrap4'
+    });
+
+    $('#modal-usuario').draggable();
+  }
+
+  function carregarEmpresa(edit, id){
+    //Limpando o campo da empresa
+    $(edit).empty();
+    var item;
+
+    //Enviando uma requisição para a API
+    $.each(API('carregar_empresas',[]), function(i, empresa){
+      if (empresa.idempresa != ''){
+        if (id == empresa.idempresa){
+          item += '<option selected value='+empresa.idempresa+'>'+empresa.razao_social+'</option>';
+        }else{
+          item += '<option value='+empresa.idempresa+'>'+empresa.razao_social+'</option>';
+        }
+      }
+        
+    });
+
+    $(edit).append(item);
+  }
+
+  function carregarTipoUsuario(edit, cliente){
+    $(edit).empty();
+
+    if (cliente == 't'){
+      var item = '<option selected value="t">SIM</option><option value="f">NÃO</option>';
+    }else{
+      var item = '<option value="t">SIM</option><option selected value="f">NÃO</option>';  
+    }
+
+    $(edit).append(item)  
+  }
+
+  function consultar(){
+    //Destruindo o dataTable
+    createOrDestroyTable(document.getElementById('tblUsuarios'), 'd');
+
+    //Limpando a table
+    $('#tbUsuarios').empty();
+
+    var item;
+    var i = 0;
+    //Enviando uma requisição para a API com os valores digitados
+    $.each(API('listar_usuario',[$('#edtCodigo').val(),$('#edtNome').val(),$('#edtEmail').val(),$('#cmbEmpresa').val().join(",")]), function(i, user){
+      if (user.idusuario != ''){
+        item += '<tr ondblclick="abrirCadastroUsuario('+user.idusuario+')">'+
+                ' <td style="width: 100px;">'+user.codigo+'</td>'+
+                ' <td style="width: 350px;">'+user.nome+'</td>'+
+                ' <td style="width: 300px;">'+user.email+'</td>'+
+                ' <td>'+user.razao_social+'</td>'+
+                ' <td style="width: 20px;"><button class="btn btn-inline-block btn-danger" onclick="deletarUsuario('+user.idusuario+')"><i class="fas fa-trash"></i></button></td>'+
+                '</tr>';
+        i += 1;
+      } 
+    });
+
+    $('#tbUsuarios').append(item);
+
+    //Criando o dataTable
+    createOrDestroyTable(document.getElementById('tblUsuarios'), 'c');
+  }
+
+  function limparConsulta(){
+
+    //Destruindo o dataTable
+    createOrDestroyTable(document.getElementById('tblUsuarios'), 'd');
+
+    //Limpando a table
+    $('#tbUsuarios').empty();
+
+    //Limpando os campos de pesquisa
+    $('#edtCodigo').val('');
+    $('#edtNome').val('');
+    $('#edtEmail').val('');
+
+    //Limpando o combobox da empresa
+    carregarEmpresa(document.getElementById('cmbEmpresa'), 0);
+    
+    //Criando o dataTable
+    createOrDestroyTable(document.getElementById('tblUsuarios'), 'c');
+  }
+
+  function abrirCadastroUsuario(id){
+    $.each(API('buscar_usuario',[id]), function(i, user){
+      $('#edtCodigoCadastro').val(user.codigo);
+      
+      $('#edtNomeCadastro').val(user.nome);
+      
+      $('#edtEmailCadastro').val(user.email);
+      $('#edtSenhaCadastro').val(user.senha);
+      $('#edtCPF').val(user.cpf);
+
+      carregarEmpresa(document.getElementById('cmbEmpresaCadastro'), user.idempresa);
+      carregarTipoUsuario(document.getElementById('cmbCliente'), user.cliente);
+      habilitarDesabilitarDepartamento(document.getElementById('cmbDepartamento'), user.cliente);
+      carregarDepartamento(document.getElementById('cmbDepartamento'), user.iddepartamento);
+
+      localStorage.setItem('idusuario_cadastro', id);
+    });
+
+    $('#modal-usuario').modal('show');
+  }
+
+  function habilitarDesabilitarDepartamento(edit, cliente){
+    if (cliente == 'f'){
+      //Desabilita o combo box departamento
+      edit.removeAttribute('disabled');
+
+      //Tornando o * visivel
+      var span = document.getElementById('spnDepartamento');
+      span.classList.remove('invisivel');
+
+    }else{
+      //Habilita o combo box departamento
+      edit.setAttribute('disabled', 'disabled');
+
+      //Tornando o * invisivel
+      var span = document.getElementById('spnDepartamento');
+      span.classList.add('invisivel');
+
+      carregarDepartamento(edit, 0);
+    }
+  }
+
+  function cancelar(){
+    Swal.fire({
+      title: 'Você tem certeza?',
+      text: "As alterações não serão salvas!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Confirmar',
+      confirmButtonColor: '#28A745'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $('#modal-usuario').modal('hide');
+      }
+    })
+  }
+
+  function salvar(){
+    var prosseguir = true;
+
+    if ($('#cmbEmpresaCadastro').val() == ''){
+      prosseguir = false;
+    }
+    
+    if ($('#edtNomeCadastro').val() == ''){
+      prosseguir = false;
+    }
+
+    if ($('#edtEmailCadastro').val() == ''){
+      prosseguir = false;
+    }
+
+    if ($('#edtSenhaCadastro').val() == ''){
+      prosseguir = false;
+    }
+    
+    if ($('#cmbCliente').val() == 'f'){
+      if ($('#cmbDepartamento').val() == ''){
+        prosseguir = false;
+      }
+    }
+
+    if (prosseguir == false){
+      Swal.fire(
+        'Ops..',
+        'Verifique os campos obrigatórios',
+        'error'
+      )
+      exit();
+    }
+
+    $.each(API('salvar_usuario',[localStorage.getItem('idusuario_cadastro'),
+                                $('#cmbEmpresaCadastro').val(),
+                                $('#edtCPF').val(),
+                                $('#edtNomeCadastro').val(),
+                                $('#cmbCliente').val(),
+                                $('#cmbDepartamento').val(),
+                                $('#edtEmailCadastro').val(),
+                                $('#edtSenhaCadastro').val()]), function(i, user){
+      
+      if (user.message == 'Sucesso'){
+        modalSucesso('Salvo com sucesso', 800);
+        $('#modal-usuario').modal('hide');
+      }
+    });
+
+  }
+
+  function cadastrarNovoUsuario(){
+    //Limpando os campos
+    localStorage.setItem('idusuario_cadastro', '');
+
+    $('#edtCodigoCadastro').val('');
+    $('#edtNomeCadastro').val('');
+    $('#edtEmailCadastro').val('');
+    $('#edtCPF').val('');
+    $('#edtSenhaCadastro').val('');
+    
+    carregarEmpresa(document.getElementById('cmbEmpresaCadastro'), 0);
+    carregarDepartamento(document.getElementById('cmbDepartamento'), 0);
+    carregarTipoUsuario(document.getElementById('cmbCliente'), 't');
+
+    habilitarDesabilitarDepartamento(document.getElementById('cmbDepartamento'), 't');
+
+    $('#modal-usuario').modal('show');
+  }
+
+  function deletarUsuario(id){
+    Swal.fire({
+      title: 'Você tem certeza?',
+      text: "O usuário será deletado.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Confirmar',
+      confirmButtonColor: '#28A745'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.each(API('deletar_usuario',[id]), function(i, user){
+          if (user.message == 'Sucesso'){
+            consultar();
+            modalSucesso('Usuário deletado com sucesso', 800);
+          }
+        });  
+      }
+    });
+  }
+</script>
+
+<body class="hold-transition sidebar-mini layout-fixed" onload="validarUsuarioLogado(); carregarPagina();">
+  <div class="wrapper">
+
+    <!-- Preloader -->
+    <div class="preloader flex-column justify-content-center align-items-center">
+      <img class="animation__shake" src="../dist/images/logo.png" alt="HelpDesk" height="100" width="100">
+    </div>
+
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+      <!-- Left navbar links -->
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+        </li>
+        <li class="nav-item d-none d-sm-inline-block">
+          <a href="menuPrincipal.html" class="nav-link">Menu principal</a>
+        </li>
+      </ul>
+
+      <!-- Right navbar links -->
+      <ul class="navbar-nav ml-auto">
+        <!-- Navbar Search -->
+        <li class="nav-item">
+          <a class="nav-link" data-widget="navbar-search" href="#" role="button">
+            <i class="fas fa-search"></i>
+          </a>
+          <div class="navbar-search-block">
+            <form class="form-inline">
+              <div class="input-group input-group-sm">
+                <input class="form-control form-control-navbar" type="search" placeholder="Search" aria-label="Search">
+                <div class="input-group-append">
+                  <button class="btn btn-navbar" type="submit">
+                    <i class="fas fa-search"></i>
+                  </button>
+                  <button class="btn btn-navbar" type="button" data-widget="navbar-search">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </li>
+
+        <!-- Messages Dropdown Menu -->
+        <li class="nav-item dropdown">
+          <a class="nav-link" data-toggle="dropdown" href="#">
+            <i class="far fa-comments"></i>
+            <span class="badge badge-danger navbar-badge">3</span>
+          </a>
+          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+            <a href="#" class="dropdown-item">
+              <!-- Message Start -->
+              <div class="media">
+                <img src="../dist/images/user1-128x128.jpg" alt="User Avatar" class="img-size-50 mr-3 img-circle">
+                <div class="media-body">
+                  <h3 class="dropdown-item-title">
+                    Brad Diesel
+                    <span class="float-right text-sm text-danger"><i class="fas fa-star"></i></span>
+                  </h3>
+                  <p class="text-sm">Call me whenever you can...</p>
+                  <p class="text-sm text-muted"><i class="far fa-clock mr-1"></i> 4 Hours Ago</p>
+                </div>
+              </div>
+              <!-- Message End -->
+            </a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item">
+              <!-- Message Start -->
+              <div class="media">
+                <img src="../dist/images/user8-128x128.jpg" alt="User Avatar" class="img-size-50 img-circle mr-3">
+                <div class="media-body">
+                  <h3 class="dropdown-item-title">
+                    John Pierce
+                    <span class="float-right text-sm text-muted"><i class="fas fa-star"></i></span>
+                  </h3>
+                  <p class="text-sm">I got your message bro</p>
+                  <p class="text-sm text-muted"><i class="far fa-clock mr-1"></i> 4 Hours Ago</p>
+                </div>
+              </div>
+              <!-- Message End -->
+            </a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item">
+              <!-- Message Start -->
+              <div class="media">
+                <img src="../dist/images/user3-128x128.jpg" alt="User Avatar" class="img-size-50 img-circle mr-3">
+                <div class="media-body">
+                  <h3 class="dropdown-item-title">
+                    Nora Silvester
+                    <span class="float-right text-sm text-warning"><i class="fas fa-star"></i></span>
+                  </h3>
+                  <p class="text-sm">The subject goes here</p>
+                  <p class="text-sm text-muted"><i class="far fa-clock mr-1"></i> 4 Hours Ago</p>
+                </div>
+              </div>
+              <!-- Message End -->
+            </a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item dropdown-footer">See All Messages</a>
+          </div>
+        </li>
+        <!-- Notifications Dropdown Menu -->
+        <li class="nav-item dropdown">
+          <a class="nav-link" data-toggle="dropdown" href="#">
+            <i class="far fa-bell"></i>
+            <span class="badge badge-warning navbar-badge">15</span>
+          </a>
+          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+            <span class="dropdown-item dropdown-header">15 Notifications</span>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item">
+              <i class="fas fa-envelope mr-2"></i> 4 new messages
+              <span class="float-right text-muted text-sm">3 mins</span>
+            </a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item">
+              <i class="fas fa-users mr-2"></i> 8 friend requests
+              <span class="float-right text-muted text-sm">12 hours</span>
+            </a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item">
+              <i class="fas fa-file mr-2"></i> 3 new reports
+              <span class="float-right text-muted text-sm">2 days</span>
+            </a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item dropdown-footer">See All Notifications</a>
+          </div>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" role="button" onclick="logoff();">
+            <i class="fas fa-power-off"></i>
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <!-- /.navbar -->
+
+    <!-- Main Sidebar Container -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+      <!-- Brand Logo -->
+      <a href="menuPrincipal.html" class="brand-link">
+        <img src="../dist/images/logo.png" alt="HelpDesk" class="brand-image img-circle elevation-3"
+          style="opacity: .8">
+        <span class="brand-text font-weight-light">HelpDesk</span>
+      </a>
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <!-- Sidebar user (optional) -->
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+          <div class="image">
+            <img src="../dist/images/user2-160x160.jpg" class="img-circle elevation-2" alt="User Image">
+          </div>
+          <div class="info">
+            <a href="#" class="d-block" id="nameUser"></a>
+          </div>
+        </div>
+
+        <!-- SidebarSearch Form -->
+        <div class="form-inline">
+          <div class="input-group" data-widget="sidebar-search">
+            <input class="form-control form-control-sidebar" type="search" placeholder="Search" aria-label="Search">
+            <div class="input-group-append">
+              <button class="btn btn-sidebar">
+                <i class="fas fa-search fa-fw"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Menu -->
+        <nav class="mt-2">
+          <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false1" id="menuPrincipal">
+            
+          </ul>
+        </nav>
+      </div>
+      <!-- /.sidebar -->
+    </aside>
+
+    <!-- Content Wrapper. Contains page content -->
+    <div class="content-wrapper">
+      <!-- Content Header (Page header) -->
+      <section class="content-header">
+        <div class="container-fluid">
+          <div class="row mb-2">
+            <div class="col-sm-6">
+              <h1>Usuários</h1>
+            </div>
+            <div class="col-sm-6">
+              <ol class="breadcrumb float-sm-right">
+                <li class="breadcrumb-item"><a href="#">Home</a></li>
+                <li class="breadcrumb-item active">Usuários</li>
+              </ol>
+            </div>
+          </div>
+        </div><!-- /.container-fluid -->
+      </section>
+
+      <!-- Main content -->
+      <section class="content">
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header">
+                  <nav>
+                    <button class="btn btn-inline-block btn-primary" title="Adicionar novo usuário" onclick="cadastrarNovoUsuario();"><i class="fas fa-plus"></i></button>
+                  </nav>
+                </div>
+
+                <div class="row">
+                  <div class="col-1" style="margin-left:20px; margin-top: 0px;">
+                    <div class="form-group">
+                      <label for="edtCodigo">Código</label>
+                      <input type="text" class="form-control" id="edtCodigo" style="margin-top: -8px;" onblur="this.value = zerosAEsquerda(this.value)">
+                    </div>
+                  </div>
+                  <div class="col-3" style="margin-left:0px; margin-top: 0px;">
+                    <div class="form-group">
+                      <label for="edtNome">Nome</label>
+                      <input type="text" class="form-control" id="edtNome" style="margin-top: -8px; text-transform:uppercase;">
+                    </div>
+                  </div>
+                  <div class="col-3" style="margin-left:0px; margin-top: 0px;">
+                    <div class="form-group">
+                      <label for="edtEmail">Email</label>
+                      <input type="text" class="form-control" id="edtEmail" style="margin-top: -8px; text-transform:uppercase;">
+                    </div>
+                  </div>
+                  <div class="col-3" style="margin-left:0px; margin-top: 0px;">
+                    <div class="form-group">
+                      <label for="cmbEmpresa">Empresa</label>
+                      <div style="margin-top: -8px;">
+                        <select class="form-control select2" multiple="multiple" data-placeholder="Selecione a empresa" style="width: 100%;" autocomplete="false" id="cmbEmpresa">
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-1" style="margin-left:0px; margin-top: 24px;">
+                    <div class="form-group">
+                      <button class="btn btn-inline-block btn-primary" title="Consultar" onclick="consultar();"><i class="fas fa-search"></i></button>
+                      <button class="btn btn-inline-block btn-success" title="Limpar pesquisa" onclick="limparConsulta();"><i class="fas fa-undo-alt"></i></button>
+                    </div>
+                  </div>
+                </div>
+                <hr style="margin-top: -5px;">
+                <!-- /.card-header -->
+                <div class="card-body">
+                  <table id="tblUsuarios" class="table table-bordered table-striped">
+                    <thead>
+                      <tr>
+                        <th style="width: 100px;">Código</th>
+                        <th style="width: 350px;">Nome</th>
+                        <th style="width: 300px;">Email</th>
+                        <th>Empresa</th>
+                        <th style="width: 20px">&nbsp;</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbUsuarios">
+                      
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th>Código</th>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Empresa</th>
+                        <th></th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <!-- /.card-body -->
+              </div>
+              <!-- /.card -->
+            </div>
+            <!-- /.col -->
+          </div>
+          <!-- /.row -->
+        </div>
+        <!-- /.container-fluid -->
+      </section>
+      <!-- /.content -->
+    </div>
+
+    <div class="modal fade" data-backdrop="static" id="modal-usuario">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">Cadastrar usuário</h4>
+            
+          </div>
+          <div class="modal-body">
+            <nav>
+              <button class="btn btn-inline-block btn-success" title="Confirmar" onclick="salvar();"><i class="fas fa-check"></i> Confirmar</button>
+              <button class="btn btn-inline-block btn-danger" title="Cancelar" onclick="cancelar();"><i class="fas fa-times-circle"></i> Cancelar</button>
+            </nav>
+            <hr>
+
+            <div class="row">
+              <div class="col-3">
+                <div class="form-group">
+                  <label for="edtCodigoCadastro">Código</label>
+                  <input type="text" class="form-control" id="edtCodigoCadastro" style="margin-top: -8px;" disabled>
+                </div>
+              </div>
+              <div class="col-md-9">
+                <div class="form-group">
+                  <label>Empresa <span class="campo_obrigatorio">*</span></label>
+                  <div style="margin-top: -8px;">
+                    <select class="form-control select2" style="width: 100%;" id="cmbEmpresaCadastro">
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row ajuste-margin-top">
+              <div class="col-3" style="margin-left:0px; margin-top: -5px;">
+                <div class="form-group">
+                  <label>CPF</label>
+                  <div style="margin-top: -8px;">
+                    <input type="text" class="form-control" id="edtCPF" oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');" maxlength="11">
+                  </div>
+                </div>
+              </div>
+              <div class="col-9" style="margin-left:0px; margin-top: -5px;">
+                <div class="form-group">
+                  <label for="edtNomeCadastro">Nome <span class="campo_obrigatorio">*</span></label>
+                  <input type="text" class="form-control" id="edtNomeCadastro" style="margin-top: -8px; text-transform:uppercase;">
+                </div>
+              </div>
+            </div>
+            <div class="row ajuste-margin-top">
+              <div class="col-3" style="margin-left:0px; margin-top: -5px;">
+                <div class="form-group">
+                  <label>Cliente <span class="campo_obrigatorio">*</span></label>
+                  <div style="margin-top: -8px;">
+                    <select class="form-control select2" style="width: 100%;" id="cmbCliente" onchange="habilitarDesabilitarDepartamento(document.getElementById('cmbDepartamento'), this.value)">
+                      <option selected="selected">SIM</option>
+                      <option>NÃO</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="col-9" style="margin-left:0px; margin-top: -5px;">
+                <div class="form-group">
+                  <label>Departamento <span class="campo_obrigatorio invisivel" id="spnDepartamento">*</span></label>
+                  <div style="margin-top: -8px;">
+                    <select class="form-control select2" style="width: 100%;" disabled id="cmbDepartamento">
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row ajuste-margin-top">
+              <div class="col-12" style="margin-left:0px; margin-top: -5px;">
+                <div class="form-group">
+                  <label for="edtEmailCadastro">Email <span class="campo_obrigatorio">*</span>  </label>
+                  <input type="text" class="form-control" id="edtEmailCadastro" style="margin-top: -8px; text-transform:uppercase;" onblur="validarEmail(document.getElementById('edtEmailCadastro'))">
+                </div>
+              </div>
+            </div>
+            <div class="row ajuste-margin-top">
+              <div class="col-12" style="margin-left:0px; margin-top: -5px;">
+                <div class="form-group">
+                  <label for="edtSenhaCadastro">Senha <span class="campo_obrigatorio">*</span>  </label>
+                  <input type="password" class="form-control" id="edtSenhaCadastro" style="margin-top: -8px;">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- /.content-wrapper -->
+    <footer class="main-footer">
+      <strong>Copyright &copy; 2021 <a href="#">HelpDesk</a>.</strong>
+      Todos direitos reservados
+      <div class="float-right d-none d-sm-inline-block">
+        <b>Versão</b> 1.0.0
+      </div>
+    </footer>
+
+    <!-- Control Sidebar -->
+    <aside class="control-sidebar control-sidebar-dark">
+      <!-- Control sidebar content goes here -->
+    </aside>
+    <!-- /.control-sidebar -->
+  </div>
+  <!-- ./wrapper -->
+
+  <!-- jQuery -->
+  <script src="../plugins/jquery/jquery.min.js"></script>
+  <script src="../plugins/jquery-ui/jquery-ui.min.js"></script>
+  <!-- Bootstrap 4 -->
+  <script src="../plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <!-- DataTables  & Plugins -->
+  <script src="../plugins/datatables/jquery.dataTables2.min.js"></script>
+  <script src="../plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+  <script src="../plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
+  <script src="../plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
+  <script src="../plugins/datatables-buttons/js/dataTables.buttons.min.js"></script>
+  <script src="../plugins/datatables-buttons/js/buttons.bootstrap4.min.js"></script>
+  <script src="../plugins/jszip/jszip.min.js"></script>
+  <script src="../plugins/pdfmake/pdfmake.min.js"></script>
+  <script src="../plugins/pdfmake/vfs_fonts.js"></script>
+  <script src="../plugins/datatables-buttons/js/buttons.html5.min.js"></script>
+  <script src="../plugins/datatables-buttons/js/buttons.print.min.js"></script>
+  <script src="../plugins/datatables-buttons/js/buttons.colVis.min.js"></script>
+  <!-- AdminLTE App -->
+  <script src="../dist/js/adminlte.min.js"></script>
+  <!-- AdminLTE for demo purposes -->
+  <script src="../dist/js/demo.js"></script>
+  <script src="../plugins/select2/js/select2.full.min.js"></script>
+  <script src="../dist/js/functions.js"></script>
+  <script src="../dist/js/menu.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Page specific script -->
+</body>
+
+</html>

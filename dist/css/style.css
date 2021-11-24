@@ -1,0 +1,70 @@
+.card-animation{
+    transition: transform 1s;
+    transform: translateX(0) scale(1);
+}
+
+.card-animation:hover {
+    transition: transform 1s;
+    transform: translateX(0) scale(1.05);
+    cursor: pointer;
+    box-shadow: 3px 3px 3px 1px rgba(0, 0, 0, 0.2);
+}
+
+.campo_obrigatorio{
+    color: red; 
+    font-size: 14px;
+}
+
+.campo_invalido{
+    border-color: red !important;
+}
+
+.campo_invalido:focus{
+    border-color: red !important;
+}
+
+
+.invisivel{
+    display: none;
+}
+
+.ajuste-margin-top{
+    margin-top: -12px;
+}
+
+[data-title]:hover:after {
+    opacity: 1;
+    transition: all 0.1s ease 0.5s;
+    visibility: visible;
+}
+/* box for title text */
+[data-title]:after {
+    content: attr(data-title);
+  	/* position for title view box */
+  	position: absolute;
+  	bottom: -1.6em;  	
+    left: 100%;
+    z-index: 99999;
+    visibility: hidden;
+    /* optional */
+    white-space: nowrap;
+  	/* stilization */
+    background-color: #00FF00;
+    color: #111;
+    font-size: 150%;
+    padding: 1px 5px 2px 5px;
+    box-shadow: 1px 1px 3px #222222;
+    opacity: 0;
+    border: 1px solid #111111;
+}
+[data-title] {
+    position: relative;
+}
+
+.tblChamados_dataTables_filter{
+    text-align: left;
+}
+
+.tblChamados_label{
+    width: 100%;
+}

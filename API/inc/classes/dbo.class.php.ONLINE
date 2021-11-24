@@ -1,0 +1,75 @@
+<?php
+	
+	//-----------------------------------------------------------------------
+	//- (c) Tretanz Consultancy Services Pvt. Ltd. --------------------------
+	//-----------------------------------------------------------------------
+
+	class dbo
+	{
+		private $host	="localhost";
+		private $user	="ograndeg_ucarbon";
+		private $pass	="gN+Z3t1=Xer-";
+		private $db 	="ograndeg_carbon";
+		
+		function dml($q)
+		{
+			
+			$con_string = "host=localhost port=5432 dbname=ograndeg_dbbranch user=ograndeg_userbranch password=+Ga1t6B}w]7Z";
+			$link = pg_connect($con_string);
+
+			//$link = pg_connect($this->host,$this->user, $this->pass) or die(pg_error());
+			//pg_select_db($this->db,$link) or die(pg_error());
+			pg_query($link, $q) or die(pg_last_error());
+			//pg_close($link);
+			//return pg_insert($link);
+		}
+		
+		function get($q)
+		{
+			$con_string = "host=localhost port=5432 dbname=ograndeg_dbbranch user=ograndeg_userbranch password=+Ga1t6B}w]7Z";
+			$link = pg_connect($con_string);
+
+
+			//$link = pg_connect($this->host,$this->user, $this->pass) or die(pg_error());
+			//pg_select_db($this->db,$link) or die(pg_error());
+			$res=pg_query($link, $q) or die(pg_last_error());
+			pg_close($link);
+			
+			$data = array();
+			$c = 0;
+			while($row = pg_fetch_assoc($res))
+			{	
+				foreach($row as $col=>$val)
+					$data[$c][$col] = $val;
+				$c++;
+			}
+			
+			return $data;
+		}
+		function get_scalar($q)
+		{
+			$con_string = "host=localhost port=5432 dbname=ograndeg_dbbranch user=ograndeg_userbranch password=+Ga1t6B}w]7Z";
+			$link = pg_connect($con_string);
+
+
+			//$link = pg_connect($this->host,$this->user, $this->pass) or die(pg_error());
+			//pg_select_db($this->db,$link) or die(pg_error());
+			$res=pg_query($link, $q) or die(pg_last_error());
+			$row=pg_fetch_array($res);
+			pg_close($link);
+			return $row[0];
+		}
+		
+		function check($q)
+		{
+			$con_string = "host=localhost port=5432 dbname=ograndeg_dbbranch user=ograndeg_userbranch password=+Ga1t6B}w]7Z";
+			$link = pg_connect($con_string);
+
+
+			//$link = pg_connect($this->host,$this->user, $this->pass) or die(pg_error());
+			//pg_select_db($this->db,$link) or die(pg_error());
+			$res=pg_query($link, $q) or die(pg_last_error());
+			return (pg_num_rows($res)==0)?false:true;
+		}
+	}
+?>
